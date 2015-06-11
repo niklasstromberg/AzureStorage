@@ -27,13 +27,11 @@ namespace cloudStorage
     {
         // Declaring variables
         public List<string> downloadList = new List<string>();
-        public List<string> tmpFiles = new List<string>();
 
         public MainWindow()
         {
             InitializeComponent();
             PopulateListAsync();
-            //ImgProgress.IsEnabled = false;
             ImgProgress.Visibility = Visibility.Collapsed;
         }
 
@@ -94,9 +92,52 @@ namespace cloudStorage
             }
         }
 
+        // Method for uploading the entire selected folder from device to cloud storage,
+        // looping through files asynchroniously
+        private async void btnUploadFolder_Click(object sender, RoutedEventArgs e)
+        {
+            List<string> tmpFiles = new List<string>();
+            var cofd = new CommonOpenFileDialog();
+            cofd.IsFolderPicker = true;
+            cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+            if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
+            {
+                string folder = cofd.FileName.Split('\\').Last() + @"\";
+                // Loop through the files in the folder and add them to a list
+                foreach (var f in Directory.GetFiles(cofd.FileName))
+                {
+                    string filename = System.IO.Path.GetFileName(f);
+                    tmpFiles.Add(filename);
+                }
+                // Loop through files in the folder chosen by user, rename and upload to cloud
+                foreach (string file in tmpFiles)
+                {
+                    lblFileToUpload.Content = "Uploading folder " + folder + " ...";
+                    ImgProgress.Visibility = Visibility.Visible;
+                    string name = System.IO.Path.Combine(folder, file);
+                    CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
+                    string fullpath = System.IO.Path.Combine(cofd.FileName, file);
+                    using (var fileStream = System.IO.File.OpenRead(fullpath))
+                    {
+                        lblFileToUpload.Content = "Uploading " + name + " ...";
+                        await blockBlob.UploadFromStreamAsync(fileStream);
+                        PopulateListAsync();
+                    }
+                }
+                lblFileToUpload.Content = "Upload complete.";
+                ImgProgress.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                lblFileToUpload.Content = "Choose a folder.";
+            }
+        }
+
+        // Method allowing selection from listview
         private void lvCloudStorage_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
+            // No code is needed here
         }
 
         // Method for downloading selected files from listview to folder on device
@@ -139,6 +180,7 @@ namespace cloudStorage
         {
             if (lvCloudStorage.SelectedItems.Count > 0)
             {
+                List<string> tmpFiles = new List<string>();
                 lblFileToUpload.Content = "Deleting " + lvCloudStorage.SelectedItems.Count + " files.";
                 foreach (var v in lvCloudStorage.SelectedItems)
                 {
