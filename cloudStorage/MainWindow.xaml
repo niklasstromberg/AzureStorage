@@ -8,18 +8,18 @@
         <Grid.Background>
             <ImageBrush ImageSource="../Img/clouds.jpg"/>
         </Grid.Background>
-        <Button x:Name="btnDownload" Content="Download" HorizontalAlignment="Left" Margin="532,175,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnDownload_Click"/>
-        <Label x:Name="lblFileToUpload" Content="" HorizontalAlignment="Left" Margin="10,411,0,0" VerticalAlignment="Top" Width="612" FontWeight="Bold" FontSize="14"/>
-        <Button x:Name="btnUpload" Content="Upload" HorizontalAlignment="Left" Margin="532,10,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnUpload_Click" BorderBrush="#FF1789D8"/>
-        <ListView x:Name="lvCloudStorage" HorizontalAlignment="Left" Height="310" Margin="10,10,0,0" VerticalAlignment="Top" Width="500" Opacity="0.7" SelectionChanged="lvCloudStorage_SelectionChanged">
+        <Button x:Name="btnDownload" Content="Download" HorizontalAlignment="Left" Margin="532,175,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnDownload_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
+        <Label x:Name="lblStatus" Content="" HorizontalAlignment="Left" Margin="10,411,0,0" VerticalAlignment="Top" Width="612" FontWeight="Bold" FontSize="14"/>
+        <Button x:Name="btnUpload" Content="Upload" HorizontalAlignment="Left" Margin="532,10,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnUpload_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
+        <ListView x:Name="lvCloudStorage" HorizontalAlignment="Left" Height="310" Margin="10,10,0,0" VerticalAlignment="Top" Width="500" Opacity="0.7" SelectionChanged="lvCloudStorage_SelectionChanged" BorderThickness="1" BorderBrush="Black">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Width="475" Header="Files in Cloud Storage" />
                 </GridView>
             </ListView.View>
         </ListView>
-        <Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="532,250,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnDelete_Click"/>
+        <Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="532,250,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnDelete_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
         <Image x:Name="ImgProgress" HorizontalAlignment="Left" Height="26" Margin="10,341,0,0" VerticalAlignment="Top" Width="612" gif:ImageBehavior.AnimatedSource="Img/loading.gif" Source="Img/loading.gif" Stretch="UniformToFill" IsEnabled="False"/>
-        <Button x:Name="btnUploadFolder" Content="Upload Folder" HorizontalAlignment="Left" Margin="532,85,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnUploadFolder_Click"/>
+        <Button x:Name="btnUploadFolder" Content="Upload Folder" HorizontalAlignment="Left" Margin="532,85,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnUploadFolder_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
     </Grid>
 </Window>
