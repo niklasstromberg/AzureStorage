@@ -43,6 +43,7 @@ namespace cloudStorage
         // in the cloud asynchroniously
         public async void PopulateListAsync()
         {
+            lvCloudStorage.Items.Clear();
             ImgProgress.Visibility = Visibility.Visible;
             foreach (IListBlobItem item in (App.Current as App).blobcontainer.ListBlobs(null, true))
             {
