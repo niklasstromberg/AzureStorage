@@ -33,6 +33,8 @@ namespace cloudStorage
         {
             InitializeComponent();
             PopulateListAsync();
+            //ImgProgress.IsEnabled = false;
+            ImgProgress.Visibility = Visibility.Collapsed;
         }
 
         // Helpermethods
@@ -41,18 +43,20 @@ namespace cloudStorage
         // in the cloud asynchroniously
         public async void PopulateListAsync()
         {
+            ImgProgress.Visibility = Visibility.Visible;
             foreach (IListBlobItem item in (App.Current as App).blobcontainer.ListBlobs(null, true))
             {
                 if (item.GetType() == typeof(CloudBlockBlob))
                 {
                     CloudBlockBlob blob = (CloudBlockBlob)item;
                     // Make sure no duplicates end up in the listview
-                    if (!lvCloudStorage.Items.Contains(blob.Name) && !tmpFiles.Contains(blob.Name.ToString()))
+                    if (!lvCloudStorage.Items.Contains(blob.Name))
                     {
                         lvCloudStorage.Items.Add(blob.Name);
                     }
                 }
             }
+            ImgProgress.Visibility = Visibility.Collapsed;
         }
 
         // GUI elements
@@ -70,6 +74,7 @@ namespace cloudStorage
                 foreach (string filename in cofd.FileNames)
                 {
                     lblFileToUpload.Content = "Uploading files ...";
+                    ImgProgress.Visibility = Visibility.Visible;
                     string name = System.IO.Path.GetFileName(filename);
                     CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
                     using (var fileStream = System.IO.File.OpenRead(filename))
@@ -80,6 +85,7 @@ namespace cloudStorage
                     }
                 }
                 lblFileToUpload.Content = "Upload complete.";
+                ImgProgress.Visibility = Visibility.Collapsed;
             }
             else
             {
@@ -104,6 +110,7 @@ namespace cloudStorage
                 cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                 {
+                    ImgProgress.Visibility = Visibility.Visible;
                     // Loop through files chosen by user, loop through them and download to device
                     foreach (var file in lvCloudStorage.SelectedItems)
                     {
@@ -117,6 +124,7 @@ namespace cloudStorage
                     }
                     lvCloudStorage.SelectedItems.Clear();
                     lblFileToUpload.Content = "Download complete.";
+                    ImgProgress.Visibility = Visibility.Collapsed;
                 }
             }
             else
@@ -136,16 +144,22 @@ namespace cloudStorage
                     tmpFiles.Add(v.ToString());
                 }
                 lvCloudStorage.SelectedItems.Clear();
+                ImgProgress.Visibility = Visibility.Visible;
                 foreach (var file in tmpFiles)
                 {
                     CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file);
                     lblFileToUpload.Content = file + " deleted.";
                     await blockBlob.DeleteAsync();
-                    PopulateListAsync();
                 }
                 lblFileToUpload.Content = tmpFiles.Count + " file(s) deleted successfully.";
+                ImgProgress.Visibility = Visibility.Collapsed;
+                tmpFiles.Clear();
+                PopulateListAsync();
             }
-            tmpFiles.Clear();
+            else
+            {
+                lblFileToUpload.Content = "Choose one or more files.";
+            }
         }
     }
 }

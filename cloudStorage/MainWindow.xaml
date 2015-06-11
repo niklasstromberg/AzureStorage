@@ -1,6 +1,7 @@
 ﻿<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:gif="http://wpfanimatedgif.codeplex.com"
         xmlns:Blob="clr-namespace:Microsoft.WindowsAzure.Storage.Blob;assembly=Microsoft.WindowsAzure.Storage" x:Class="cloudStorage.MainWindow"
         Title="Azure Storage" Height="480" Width="640" >
     <Grid>
@@ -13,10 +14,11 @@
         <ListView x:Name="lvCloudStorage" HorizontalAlignment="Left" Height="300" Margin="10,10,10,10" VerticalAlignment="Top" Width="500" Opacity="0.7" SelectionChanged="lvCloudStorage_SelectionChanged">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Width="480" Header="Filename" />
+                    <GridViewColumn Width="475" Header="Filename" />
                 </GridView>
             </ListView.View>
         </ListView>
         <Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="532,179,0,0" VerticalAlignment="Top" Width="75" Height="70" Click="btnDelete_Click"/>
+        <Image x:Name="ImgProgress" HorizontalAlignment="Left" Height="26" Margin="10,349,0,0" VerticalAlignment="Top" Width="597" gif:ImageBehavior.AnimatedSource="Img/loading.gif" Source="Img/loading.gif" Stretch="UniformToFill" IsEnabled="False"/>
     </Grid>
 </Window>
