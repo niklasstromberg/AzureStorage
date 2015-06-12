@@ -114,7 +114,7 @@ namespace cloudStorage
                     string filename = System.IO.Path.GetFileName(f);
                     tmpFiles.Add(filename);
                 }
-                // Loop through files in the folder chosen by user, rename them and upload to cloud
+                // Loop through files in the folder chosen by user, rename them and upload to cloud asynchroniously
                 foreach (string file in tmpFiles)
                 {
                     lblStatus.Content = "Uploading folder " + folder + " ...";
@@ -148,22 +148,43 @@ namespace cloudStorage
         // asynchroniously
         private async void btnDownload_Click(object sender, RoutedEventArgs e)
         {
+            bool recreate = false;
+            string fullpath;
             if (lvCloudStorage.SelectedItems.Count > 0)
             {
-                lblStatus.Content = "Downloading " + lvCloudStorage.SelectedItems.Count + " files.";
+                lblStatus.Content = "Downloading " + lvCloudStorage.SelectedItems.Count + " file(s).";
                 var cofd = new CommonOpenFileDialog();
                 cofd.IsFolderPicker = true;
                 cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                 {
+                    // Open a messagebox, asking the user to confirm recreating the folderstructure
+                    MessageBoxResult result = MessageBox.Show("Recreate the folderstructure of the chosen files (if any)?",
+                        "Cload Storage", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        recreate = true;
+                    }
                     ImgProgress.Visibility = Visibility.Visible;
                     // Loop through files chosen by user, loop through them and download to device
                     foreach (var file in lvCloudStorage.SelectedItems)
                     {
-                        //string filename = file.ToString().Split('/').Last();
                         CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file.ToString());
-                        string fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString().Split('/').Last());
-                        //System.IO.Directory.CreateDirectory(file.ToString().Split('\\').First());
+                        // Set and create filenames and folderstructure based on userchoice
+                        if (recreate)
+                        {
+                            fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString());
+                            if (file.ToString().Contains('/'))
+                            {
+                                string folder = file.ToString().Split('/').First();
+                                Directory.CreateDirectory(cofd.FileName + System.IO.Path.DirectorySeparatorChar + folder);
+                            }
+                        }
+                        else
+                        {
+                            fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString().Split('/').Last());
+                        }
+                        // Write the chosen files to device
                         using (var fileStream = System.IO.File.OpenWrite(fullpath))
                         {
                             await blockBlob.DownloadToStreamAsync(fileStream);
