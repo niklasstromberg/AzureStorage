@@ -160,8 +160,10 @@ namespace cloudStorage
                     // Loop through files chosen by user, loop through them and download to device
                     foreach (var file in lvCloudStorage.SelectedItems)
                     {
+                        //string filename = file.ToString().Split('/').Last();
                         CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file.ToString());
-                        string fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString());
+                        string fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString().Split('/').Last());
+                        //System.IO.Directory.CreateDirectory(file.ToString().Split('\\').First());
                         using (var fileStream = System.IO.File.OpenWrite(fullpath))
                         {
                             await blockBlob.DownloadToStreamAsync(fileStream);
