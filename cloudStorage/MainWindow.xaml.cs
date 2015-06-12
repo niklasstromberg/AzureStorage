@@ -32,8 +32,21 @@ namespace cloudStorage
         public MainWindow()
         {
             InitializeComponent();
-            PopulateListAsync();
             ImgProgress.Visibility = Visibility.Collapsed;
+            // if no connection to azure storage is available
+            if (!(App.Current as App).ping)
+            {
+                lblStatus.Content = "No internetconnection or storagecontainer unavailable.";
+                btnDelete.IsEnabled = false;
+                btnDownload.IsEnabled = false;
+                btnUpload.IsEnabled = false;
+                btnUploadFolder.IsEnabled = false;
+            }
+            else
+            {
+                lblStatus.Content = "Cloud Storage is ready.";
+                PopulateListAsync();
+            }
         }
 
         // Helpermethods

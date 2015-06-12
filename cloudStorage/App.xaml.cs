@@ -23,6 +23,7 @@ namespace cloudStorage
         CloudStorageAccount csa;
         CloudBlobClient cbc;
         public CloudBlobContainer blobcontainer;
+        public bool ping;
 
         // Overriding OnStartup to be able to store azure-specific data outside the logic.
         // Data is reachable in code through (App.Current as App).[variable]
@@ -33,8 +34,20 @@ namespace cloudStorage
             csa = CloudStorageAccount.Parse(CloudConfigurationManager.GetSetting("StorageConnectionString"));
             cbc = csa.CreateCloudBlobClient();
             blobcontainer = cbc.GetContainerReference("azurestorage");
-            blobcontainer.CreateIfNotExists();
-            blobcontainer.SetPermissions(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
+            // codeblocks run to check connection to azure storage
+            try
+            {
+                ping = blobcontainer.Exists();
+            }
+            catch
+            {
+                return;
+            }
+            if (ping)
+            {
+                blobcontainer.CreateIfNotExists();
+                blobcontainer.SetPermissions(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
+            }
         }
     }
 }
