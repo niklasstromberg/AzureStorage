@@ -21,5 +21,7 @@
         <Button x:Name="btnDelete" Content="Delete" HorizontalAlignment="Left" Margin="532,250,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnDelete_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
         <Image x:Name="ImgProgress" HorizontalAlignment="Left" Height="26" Margin="10,341,0,0" VerticalAlignment="Top" Width="612" gif:ImageBehavior.AnimatedSource="Img/loading.gif" Source="Img/loading.gif" Stretch="UniformToFill" IsEnabled="False"/>
         <Button x:Name="btnUploadFolder" Content="Upload Folder" HorizontalAlignment="Left" Margin="532,85,0,0" VerticalAlignment="Top" Width="90" Height="70" Click="btnUploadFolder_Click" Opacity="0.6" BorderThickness="3" BorderBrush="Black"/>
+        <Label x:Name="lblConn" Content="" HorizontalAlignment="Left" Margin="480,372,0,0" Height="34" Width="97" VerticalAlignment="Top"/>
+        <Button x:Name="btbRetry" Content="Retry" HorizontalAlignment="Left" Margin="582,372,0,0" VerticalAlignment="Top" Width="40" Height="34" Opacity="0.6" Click="btbRetry_Click" />
     </Grid>
 </Window>

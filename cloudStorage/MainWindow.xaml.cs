@@ -36,43 +36,61 @@ namespace cloudStorage
             // if no connection to azure storage is available
             if (!(App.Current as App).ping)
             {
-                lblStatus.Content = "No internetconnection or storagecontainer unavailable.";
-                btnDelete.IsEnabled = false;
-                btnDownload.IsEnabled = false;
-                btnUpload.IsEnabled = false;
-                btnUploadFolder.IsEnabled = false;
+                notConnected();
             }
             else
             {
                 lblStatus.Content = "Cloud Storage is ready.";
+                lblConn.Content = "Connected";
+                lblConn.Foreground = new SolidColorBrush(Colors.Green);
                 PopulateListAsync();
             }
         }
 
         // Helpermethods
 
+        public void notConnected()
+        {
+            lblStatus.Content = "No internetconnection or storagecontainer unavailable.";
+            btnDelete.IsEnabled = false;
+            btnDownload.IsEnabled = false;
+            btnUpload.IsEnabled = false;
+            btnUploadFolder.IsEnabled = false;
+            lblConn.Content = "Not Connected";
+            lblConn.Foreground= new SolidColorBrush(Colors.Red);
+        }
+
         // Method for populating the listview with all files in the storage container
         // in the cloud asynchroniously
         public async void PopulateListAsync()
         {
-            // New tmp and clear lvCloudStorage.Items to make sure no duplicates are added
-            List<string> tmp = new List<string>();
-            lvCloudStorage.Items.Clear();
-            ImgProgress.Visibility = Visibility.Visible;
-            foreach (IListBlobItem item in (App.Current as App).blobcontainer.ListBlobs(null, true))
+            // Check the connection to Azure
+            if (await (App.Current as App).checkConnection())
             {
-                if (item.GetType() == typeof(CloudBlockBlob))
+                // New tmp and clear lvCloudStorage.Items to make sure no duplicates are added
+                List<string> tmp = new List<string>();
+                lvCloudStorage.Items.Clear();
+                ImgProgress.Visibility = Visibility.Visible;
+                // Loop through blobs in container and add to tmp
+                foreach (IListBlobItem item in (App.Current as App).blobcontainer.ListBlobs(null, true))
                 {
-                    CloudBlockBlob blob = (CloudBlockBlob)item;
-                    tmp.Add(blob.Name);
+                    if (item.GetType() == typeof(CloudBlockBlob))
+                    {
+                        CloudBlockBlob blob = (CloudBlockBlob)item;
+                        tmp.Add(blob.Name);
+                    }
                 }
+                tmp.Sort();
+                foreach (var v in tmp)
+                {
+                    lvCloudStorage.Items.Add(v);
+                }
+                ImgProgress.Visibility = Visibility.Collapsed;
             }
-            tmp.Sort();
-            foreach (var v in tmp)
+            else
             {
-                lvCloudStorage.Items.Add(v);
+                notConnected();
             }
-            ImgProgress.Visibility = Visibility.Collapsed;
         }
 
         // GUI elements
@@ -81,31 +99,39 @@ namespace cloudStorage
         // in the cloud asynchroniously
         private async void btnUpload_Click(object sender, RoutedEventArgs e)
         {
-            var cofd = new CommonOpenFileDialog();
-            cofd.Multiselect = true;
-            cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
+            // Check the connection to Azure
+            if (await (App.Current as App).checkConnection())
             {
-                // Loop through files chosen by user, loop through and upload to cloud
-                foreach (string filename in cofd.FileNames)
+                var cofd = new CommonOpenFileDialog();
+                cofd.Multiselect = true;
+                cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                 {
-                    lblStatus.Content = "Uploading files ...";
-                    ImgProgress.Visibility = Visibility.Visible;
-                    string name = System.IO.Path.GetFileName(filename);
-                    CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
-                    using (var fileStream = System.IO.File.OpenRead(filename))
+                    // Loop through files chosen by user, loop through and upload to cloud
+                    foreach (string filename in cofd.FileNames)
                     {
-                        lblStatus.Content = "Uploading " + name + " ...";
-                        await blockBlob.UploadFromStreamAsync(fileStream);
-                        PopulateListAsync();
+                        lblStatus.Content = "Uploading files ...";
+                        ImgProgress.Visibility = Visibility.Visible;
+                        string name = System.IO.Path.GetFileName(filename);
+                        CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
+                        using (var fileStream = System.IO.File.OpenRead(filename))
+                        {
+                            lblStatus.Content = "Uploading " + name + " ...";
+                            await blockBlob.UploadFromStreamAsync(fileStream);
+                            PopulateListAsync();
+                        }
                     }
+                    lblStatus.Content = "Upload complete.";
+                    ImgProgress.Visibility = Visibility.Collapsed;
                 }
-                lblStatus.Content = "Upload complete.";
-                ImgProgress.Visibility = Visibility.Collapsed;
+                else
+                {
+                    lblStatus.Content = "Chose one or more files.";
+                }
             }
             else
             {
-                lblStatus.Content = "Chose one or more files.";
+                notConnected();
             }
         }
 
@@ -113,43 +139,53 @@ namespace cloudStorage
         // looping through files asynchroniously
         private async void btnUploadFolder_Click(object sender, RoutedEventArgs e)
         {
-            List<string> tmpFiles = new List<string>();
-            var cofd = new CommonOpenFileDialog();
-            cofd.IsFolderPicker = true;
-            cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-            if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
+            // Check the connection to Azure
+            if (await (App.Current as App).checkConnection())
             {
-                string folder = cofd.FileName.Split('\\').Last() + @"\";
-                // Loop through the files in the folder and add them to a list
-                foreach (var f in Directory.GetFiles(cofd.FileName))
+                List<string> tmpFiles = new List<string>();
+                var cofd = new CommonOpenFileDialog();
+                cofd.IsFolderPicker = true;
+                cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+                if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                 {
-                    string filename = System.IO.Path.GetFileName(f);
-                    tmpFiles.Add(filename);
-                }
-                // Loop through files in the folder chosen by user, rename them and upload to cloud asynchroniously
-                foreach (string file in tmpFiles)
-                {
-                    lblStatus.Content = "Uploading folder " + folder + " ...";
-                    ImgProgress.Visibility = Visibility.Visible;
-                    string name = System.IO.Path.Combine(folder, file);
-                    CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
-                    string fullpath = System.IO.Path.Combine(cofd.FileName, file);
-                    using (var fileStream = System.IO.File.OpenRead(fullpath))
+                    string folder = cofd.FileName.Split('\\').Last() + @"\";
+                    // Loop through the files in the folder and add them to a list
+                    foreach (var f in Directory.GetFiles(cofd.FileName))
                     {
-                        lblStatus.Content = "Uploading " + name + " ...";
-                        await blockBlob.UploadFromStreamAsync(fileStream);
-                        PopulateListAsync();
+                        string filename = System.IO.Path.GetFileName(f);
+                        tmpFiles.Add(filename);
                     }
+                    // Loop through files in the folder chosen by user, rename them and upload to cloud asynchroniously
+                    foreach (string file in tmpFiles)
+                    {
+                        lblStatus.Content = "Uploading folder " + folder + " ...";
+                        ImgProgress.Visibility = Visibility.Visible;
+                        string name = System.IO.Path.Combine(folder, file);
+                        CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(name);
+                        string fullpath = System.IO.Path.Combine(cofd.FileName, file);
+                        using (var fileStream = System.IO.File.OpenRead(fullpath))
+                        {
+                            lblStatus.Content = "Uploading " + name + " ...";
+                            await blockBlob.UploadFromStreamAsync(fileStream);
+                            PopulateListAsync();
+                        }
+                    }
+                    lblStatus.Content = "Upload complete.";
+                    ImgProgress.Visibility = Visibility.Collapsed;
                 }
-                lblStatus.Content = "Upload complete.";
-                ImgProgress.Visibility = Visibility.Collapsed;
+                else
+                {
+                    lblStatus.Content = "Choose a folder.";
+                }
             }
             else
             {
-                lblStatus.Content = "Choose a folder.";
+                notConnected();
             }
         }
+
+
 
         // Method allowing selection from listview
         private void lvCloudStorage_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -161,87 +197,124 @@ namespace cloudStorage
         // asynchroniously
         private async void btnDownload_Click(object sender, RoutedEventArgs e)
         {
-            bool recreate = false;
-            string fullpath;
-            if (lvCloudStorage.SelectedItems.Count > 0)
+            // Check the connection to Azure
+            if (await (App.Current as App).checkConnection())
             {
-                lblStatus.Content = "Downloading " + lvCloudStorage.SelectedItems.Count + " file(s).";
-                var cofd = new CommonOpenFileDialog();
-                cofd.IsFolderPicker = true;
-                cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
+                bool recreate = false;
+                string fullpath;
+                if (lvCloudStorage.SelectedItems.Count > 0)
                 {
-                    // Open a messagebox, asking the user to confirm recreating the folderstructure
-                    MessageBoxResult result = MessageBox.Show("Recreate the folderstructure of the chosen files (if any)?",
-                        "Cload Storage", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (result == MessageBoxResult.Yes)
+                    lblStatus.Content = "Downloading " + lvCloudStorage.SelectedItems.Count + " file(s).";
+                    var cofd = new CommonOpenFileDialog();
+                    cofd.IsFolderPicker = true;
+                    cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                    if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                     {
-                        recreate = true;
-                    }
-                    ImgProgress.Visibility = Visibility.Visible;
-                    // Loop through files chosen by user, loop through them and download to device
-                    foreach (var file in lvCloudStorage.SelectedItems)
-                    {
-                        CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file.ToString());
-                        // Set and create filenames and folderstructure based on userchoice
-                        if (recreate)
+                        // Open a messagebox, asking the user to confirm recreating the folderstructure
+                        MessageBoxResult result = MessageBox.Show("Recreate the folderstructure of the chosen files (if any)?",
+                            "Cload Storage", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (result == MessageBoxResult.Yes)
                         {
-                            fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString());
-                            if (file.ToString().Contains('/'))
+                            recreate = true;
+                        }
+                        ImgProgress.Visibility = Visibility.Visible;
+                        // Loop through files chosen by user, loop through them and download to device
+                        foreach (var file in lvCloudStorage.SelectedItems)
+                        {
+                            CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file.ToString());
+                            // Set and create filenames and folderstructure based on userchoice
+                            if (recreate)
                             {
-                                string folder = file.ToString().Split('/').First();
-                                Directory.CreateDirectory(cofd.FileName + System.IO.Path.DirectorySeparatorChar + folder);
+                                fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString());
+                                if (file.ToString().Contains('/'))
+                                {
+                                    string folder = file.ToString().Split('/').First();
+                                    Directory.CreateDirectory(cofd.FileName + System.IO.Path.DirectorySeparatorChar + folder);
+                                }
+                            }
+                            else
+                            {
+                                fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString().Split('/').Last());
+                            }
+                            // Write the chosen files to device
+                            using (var fileStream = System.IO.File.OpenWrite(fullpath))
+                            {
+                                await blockBlob.DownloadToStreamAsync(fileStream);
+                                lblStatus.Content = file.ToString() + " was downloaded.";
                             }
                         }
-                        else
-                        {
-                            fullpath = System.IO.Path.Combine(cofd.FileName, file.ToString().Split('/').Last());
-                        }
-                        // Write the chosen files to device
-                        using (var fileStream = System.IO.File.OpenWrite(fullpath))
-                        {
-                            await blockBlob.DownloadToStreamAsync(fileStream);
-                            lblStatus.Content = file.ToString() + " was downloaded.";
-                        }
+                        lvCloudStorage.SelectedItems.Clear();
+                        lblStatus.Content = "Download complete.";
+                        ImgProgress.Visibility = Visibility.Collapsed;
                     }
-                    lvCloudStorage.SelectedItems.Clear();
-                    lblStatus.Content = "Download complete.";
-                    ImgProgress.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    lblStatus.Content = "Chose one or more files.";
                 }
             }
             else
             {
-                lblStatus.Content = "Chose one or more files.";
+                notConnected();
             }
         }
+
 
         // Method for deleting the files selected by the user from the cloud storage
         private async void btnDelete_Click(object sender, RoutedEventArgs e)
         {
-            if (lvCloudStorage.SelectedItems.Count > 0)
+            // Check the connection to Azure
+            if (await (App.Current as App).checkConnection())
             {
-                List<string> tmpFiles = new List<string>();
-                lblStatus.Content = "Deleting " + lvCloudStorage.SelectedItems.Count + " files.";
-                foreach (var v in lvCloudStorage.SelectedItems)
+                if (lvCloudStorage.SelectedItems.Count > 0)
                 {
-                    tmpFiles.Add(v.ToString());
+                    List<string> tmpFiles = new List<string>();
+                    lblStatus.Content = "Deleting " + lvCloudStorage.SelectedItems.Count + " files.";
+                    foreach (var v in lvCloudStorage.SelectedItems)
+                    {
+                        tmpFiles.Add(v.ToString());
+                    }
+                    lvCloudStorage.SelectedItems.Clear();
+                    ImgProgress.Visibility = Visibility.Visible;
+                    foreach (var file in tmpFiles)
+                    {
+                        CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file);
+                        lblStatus.Content = file + " deleted.";
+                        await blockBlob.DeleteAsync();
+                    }
+                    lblStatus.Content = tmpFiles.Count + " file(s) deleted successfully.";
+                    ImgProgress.Visibility = Visibility.Collapsed;
+                    tmpFiles.Clear();
+                    PopulateListAsync();
                 }
-                lvCloudStorage.SelectedItems.Clear();
-                ImgProgress.Visibility = Visibility.Visible;
-                foreach (var file in tmpFiles)
+                else
                 {
-                    CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file);
-                    lblStatus.Content = file + " deleted.";
-                    await blockBlob.DeleteAsync();
+                    lblStatus.Content = "Choose one or more files.";
                 }
-                lblStatus.Content = tmpFiles.Count + " file(s) deleted successfully.";
-                ImgProgress.Visibility = Visibility.Collapsed;
-                tmpFiles.Clear();
+            }
+            else
+            {
+                notConnected();
+            }
+        }
+
+        private async void btbRetry_Click(object sender, RoutedEventArgs e)
+        {
+            // Check the connection to Azure
+            if (await(App.Current as App).checkConnection())
+            {
+                lblStatus.Content = "Cloud Storage is ready.";
+                btnDelete.IsEnabled = true;
+                btnDownload.IsEnabled = true;
+                btnUpload.IsEnabled = true;
+                btnUploadFolder.IsEnabled = true;
+                lblConn.Content = "Connected";
+                lblConn.Foreground = new SolidColorBrush(Colors.Green);
                 PopulateListAsync();
             }
             else
             {
-                lblStatus.Content = "Choose one or more files.";
+                notConnected();
             }
         }
     }
