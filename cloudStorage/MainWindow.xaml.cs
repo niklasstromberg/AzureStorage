@@ -20,6 +20,7 @@ using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.Azure;
 using Microsoft.WindowsAPICodePack.Dialogs;
+using System.Net.NetworkInformation;
 
 namespace cloudStorage
 {
@@ -27,37 +28,89 @@ namespace cloudStorage
     {
         // Declaring variables
         public List<string> downloadList = new List<string>();
+        public bool online;
 
         // Code to initialize app, build the list of files in the cloud and hide the progressanimation
         public MainWindow()
         {
             InitializeComponent();
             ImgProgress.Visibility = Visibility.Collapsed;
+            NetworkChange.NetworkAvailabilityChanged += NetworkChange_NetworkAvailabilityChanged;
             // if no connection to azure storage is available
-            if (!(App.Current as App).ping)
+            if ((App.Current as App).ping || online)
             {
-                notConnected();
+                Connected();
             }
             else
             {
-                lblStatus.Content = "Cloud Storage is ready.";
-                lblConn.Content = "Connected";
-                lblConn.Foreground = new SolidColorBrush(Colors.Green);
-                PopulateListAsync();
+                notConnected();
             }
+        }
+
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            await OnlineCheck();
         }
 
         // Helpermethods
 
-        public void notConnected()
+        public async Task<bool> OnlineCheck()
         {
-            lblStatus.Content = "No internetconnection or storagecontainer unavailable.";
-            btnDelete.IsEnabled = false;
-            btnDownload.IsEnabled = false;
-            btnUpload.IsEnabled = false;
-            btnUploadFolder.IsEnabled = false;
-            lblConn.Content = "Not Connected";
-            lblConn.Foreground= new SolidColorBrush(Colors.Red);
+            online = await (App.Current as App).checkConnection();
+            if (online)
+            {
+                Connected();
+            }
+            return online;
+        }
+
+        // Method reacting to changes in network availability
+        private async void NetworkChange_NetworkAvailabilityChanged(object sender, NetworkAvailabilityEventArgs e)
+        {
+            online = e.IsAvailable;
+            if (online)
+            {
+                await (App.Current as App).blobcontainer.ExistsAsync((App.Current as App).bro, (App.Current as App).oc);
+                Connected();
+            }
+            else
+            {
+                notConnected();
+            }
+        }
+
+        // Method doing work if the application is connected
+        public async void Connected()
+        {
+            await Dispatcher.InvokeAsync(() =>
+                {
+                    lblStatus.Content = "Cloud Storage is ready.";
+                    btnDelete.IsEnabled = true;
+                    btnDownload.IsEnabled = true;
+                    btnUpload.IsEnabled = true;
+                    btnUploadFolder.IsEnabled = true;
+                    lblConn.Content = "Connected";
+                    lblConn.Foreground = new SolidColorBrush(Colors.Green);
+                    PopulateListAsync();
+                });
+
+        }
+
+        // Method doing work if application is not connected
+        public async void notConnected()
+        {
+            await Dispatcher.InvokeAsync(() =>
+                {
+                    lblStatus.Content = "No internetconnection or storagecontainer unavailable.";
+                    btnDelete.IsEnabled = false;
+                    btnDownload.IsEnabled = false;
+                    btnUpload.IsEnabled = false;
+                    btnUploadFolder.IsEnabled = false;
+                    lblConn.Content = "Not Connected";
+                    lblConn.Foreground = new SolidColorBrush(Colors.Red);
+                });
+
         }
 
         // Method for populating the listview with all files in the storage container
@@ -107,7 +160,7 @@ namespace cloudStorage
                 cofd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 if (cofd.ShowDialog() == CommonFileDialogResult.Ok)
                 {
-                    // Loop through files chosen by user, loop through and upload to cloud
+                    // Loop through the files chosen by user, and upload asynchroniously to cloud storage
                     foreach (string filename in cofd.FileNames)
                     {
                         lblStatus.Content = "Uploading files ...";
@@ -185,8 +238,6 @@ namespace cloudStorage
             }
         }
 
-
-
         // Method allowing selection from listview
         private void lvCloudStorage_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -204,6 +255,11 @@ namespace cloudStorage
                 string fullpath;
                 if (lvCloudStorage.SelectedItems.Count > 0)
                 {
+                    List<string> tmp = new List<string>();
+                    foreach (var file in lvCloudStorage.SelectedItems)
+                    {
+                        tmp.Add(file.ToString());
+                    }
                     lblStatus.Content = "Downloading " + lvCloudStorage.SelectedItems.Count + " file(s).";
                     var cofd = new CommonOpenFileDialog();
                     cofd.IsFolderPicker = true;
@@ -219,7 +275,7 @@ namespace cloudStorage
                         }
                         ImgProgress.Visibility = Visibility.Visible;
                         // Loop through files chosen by user, loop through them and download to device
-                        foreach (var file in lvCloudStorage.SelectedItems)
+                        foreach (var file in tmp)
                         {
                             CloudBlockBlob blockBlob = (App.Current as App).blobcontainer.GetBlockBlobReference(file.ToString());
                             // Set and create filenames and folderstructure based on userchoice
@@ -298,10 +354,11 @@ namespace cloudStorage
             }
         }
 
+        // Method for checking the applikations connection to azure storage
         private async void btbRetry_Click(object sender, RoutedEventArgs e)
         {
             // Check the connection to Azure
-            if (await(App.Current as App).checkConnection())
+            if (await (App.Current as App).checkConnection())
             {
                 lblStatus.Content = "Cloud Storage is ready.";
                 btnDelete.IsEnabled = true;

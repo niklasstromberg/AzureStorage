@@ -10,6 +10,8 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Auth;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.Azure;
+using Microsoft.WindowsAzure.Storage.RetryPolicies;
+using System.Net.NetworkInformation;
 
 
 namespace cloudStorage
@@ -24,20 +26,28 @@ namespace cloudStorage
         CloudBlobClient cbc;
         public CloudBlobContainer blobcontainer;
         public bool ping;
-        
+        public BlobRequestOptions bro = new BlobRequestOptions();
+        public OperationContext oc = new OperationContext();
+
+
         // method to check connection to azure storage
         public async Task<bool> checkConnection()
         {
             try
             {
-                ping = true;
-                return await blobcontainer.ExistsAsync();
+                ping = await blobcontainer.ExistsAsync(bro, oc);
+                return ping;
             }
             catch
             {
                 ping = false;
-                return false;
+                return ping;
             }
+        }
+
+        public bool getPing()
+        {
+            return ping;
         }
 
         // Overriding OnStartup to be able to store azure-specific data outside the logic.
@@ -49,11 +59,13 @@ namespace cloudStorage
             csa = CloudStorageAccount.Parse(CloudConfigurationManager.GetSetting("StorageConnectionString"));
             cbc = csa.CreateCloudBlobClient();
             blobcontainer = cbc.GetContainerReference("azurestorage");
+            bro.RetryPolicy = new LinearRetry(TimeSpan.FromSeconds(2), 3);
             // If connection is established
             if (await checkConnection())
             {
                 blobcontainer.CreateIfNotExists();
                 blobcontainer.SetPermissions(new BlobContainerPermissions { PublicAccess = BlobContainerPublicAccessType.Blob });
+                ping = getPing();//await checkConnection();
             }
         }
     }
